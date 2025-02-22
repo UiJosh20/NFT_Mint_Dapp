@@ -3,8 +3,16 @@ import axios from "axios";
 import styles from "../../styles/Home.module.css";
 import { FaPlayCircle, FaRocket } from "react-icons/fa";
 import Cookies from "js-cookie";
+import Image from "next/image";
 
-const MintForm = () => {
+interface NFTData {
+  NFT_name: string;
+  NFT_description: string;
+  NFT_Logo_Url: string;
+  NFT_ID: string;
+}
+
+const MintForm: React.FC = () => {
   const [nftData, setNftData] = useState({
     NFT_name: "",
     NFT_description: "",
@@ -12,7 +20,8 @@ const MintForm = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [mintedNFT, setMintedNFT] = useState(null); // State to hold minted NFT data
+  const [mintedNFT, setMintedNFT] = useState<NFTData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -23,17 +32,18 @@ const MintForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     const User_Wallet_Address = Cookies.get("walletAddress");
 
     if (!User_Wallet_Address) {
-      alert("Wallet not connected! Please connect your wallet first.");
+      setError("Wallet not connected! Please connect your wallet first.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const NFT_ID = Date.now(); // Generate unique NFT ID
+      const NFT_ID = Date.now().toString(); // Generate unique NFT ID
       await axios.post("http://localhost:5500/api/storenftdata", {
         ...nftData,
         NFT_ID,
@@ -41,20 +51,19 @@ const MintForm = () => {
       });
 
       // Fetch the minted NFT details
-      const response = await axios.get(
+      const response = await axios.get<NFTData>(
         `http://localhost:5500/api/getnftdatabyid/${NFT_ID}`
       );
 
-      setMintedNFT(response.data); // Store minted NFT data
+      setMintedNFT(response.data);
     } catch (error) {
       console.error("Error minting NFT:", error);
-      alert("Failed to mint NFT. Please try again.");
+      setError("Failed to mint NFT. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // If NFT is minted, show success screen
   if (mintedNFT) {
     return (
       <section className={styles.successContainer}>
@@ -63,7 +72,7 @@ const MintForm = () => {
           <h2>NFT Minted Successfully!</h2>
           <p>Your NFT has been created and added to your collection.</p>
           <div className={styles.nftPreview}>
-            <img src={mintedNFT.NFT_Logo_Url} alt="Minted NFT" />
+            <Image src={mintedNFT.NFT_Logo_Url} alt="Minted NFT" />
           </div>
           <div className={styles.nftDetails}>
             <p>
@@ -109,9 +118,9 @@ const MintForm = () => {
         </button>
       </div>
 
-      {/* Mint NFT Form */}
       <section className={styles.mintSection}>
         <h2>Mint Your NFT</h2>
+        {error && <p className={styles.errorMessage}>{error}</p>}
         <form onSubmit={handleSubmit}>
           <input
             className={styles.input}
